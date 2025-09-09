@@ -10,7 +10,7 @@ import { PrivacyTermsModal } from './components/PrivacyTermsModal'
 import { JobCandidateAnimation } from './components/job-candidate-animation'
 import { Pricing } from './components/ui/pricing'
 import { AddOnsModal } from './components/AddOnsModal'
-import { supabase, type User } from './lib/supabase'
+import { supabase, type User as SupabaseUser } from './lib/supabase'
 
 // Lazy load heavy components
 const UserProfileView = lazy(() => import('./components/UserProfileView').then(module => ({ default: module.UserProfileView })))
@@ -113,7 +113,7 @@ function App() {
   const [showSignupModal, setShowSignupModal] = useState(false)
   const [showPrivacyTermsModal, setShowPrivacyTermsModal] = useState(false)
   const [showAddOnsModal, setShowAddOnsModal] = useState(false)
-  const [user, setUser] = useState<User | null>(null)
+  const [user, setUser] = useState<SupabaseUser | null>(null)
   const [userProfile, setUserProfile] = useState<any>(null)
   const [companyProfile, setCompanyProfile] = useState<CompanyData | null>(null)
   const [loading, setLoading] = useState(true)
