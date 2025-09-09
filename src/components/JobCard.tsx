@@ -81,6 +81,8 @@ export function JobCard({ job, onSwipe, onCardClick, exitDirection }: JobCardPro
               src={job.logo} 
               alt={`${job.company} logo`}
               className="w-full h-full object-cover"
+              loading="lazy"
+              decoding="async"
             />
           ) : (
             <div className="text-white/60 text-center">
