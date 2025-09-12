@@ -157,7 +157,10 @@ export function JobSeekerProfileCompletion({ signupData, onProfileComplete }: Jo
   const uploadFile = async (file: File, folder: string): Promise<{ publicUrl: string; filePath: string } | null> => {
     try {
       const fileExt = file.name.split('.').pop()
-      const fileName = `temp-${Date.now()}.${fileExt}`
+      // Get current user for proper file naming
+      const { data: { user } } = await supabase.auth.getUser()
+      const userId = user?.id || 'anonymous'
+      const fileName = `${userId}-${Date.now()}.${fileExt}`
       const filePath = `${folder}/${fileName}`
 
       const { error: uploadError } = await supabase.storage
@@ -186,51 +189,24 @@ export function JobSeekerProfileCompletion({ signupData, onProfileComplete }: Jo
     setError(null)
 
     try {
-      // First, create the user account
-      const { data: authData, error: authError } = await supabase.auth.signUp({
-        email: signupData.email,
-        password: signupData.password,
-        options: {
-          data: {
-            full_name: signupData.name,
-            user_type: signupData.userType,
-          }
-        }
-      })
-
-      if (authError) {
-        throw new Error(`Account creation failed: ${authError.message}`)
+      // Get the current authenticated user
+      const { data: { user }, error: userError } = await supabase.auth.getUser()
+      
+      if (userError || !user) {
+        throw new Error('You must be logged in to complete your profile. Please log in and try again.')
       }
-
-      if (!authData.user) {
-        throw new Error('Account creation failed: No user returned')
-      }
-
-      const newUser = authData.user
 
       let profilePictureUrl = ''
       
       // Upload profile picture if provided
       if (formData.profilePicture) {
-        const uploadResult = await uploadFile(formData.profilePicture, 'profile-pictures')
-        if (uploadResult) {
-          profilePictureUrl = uploadResult.publicUrl
-          // Update the file path to include the actual user ID
-          const fileExt = formData.profilePicture.name.split('.').pop()
-          const newFileName = `${newUser.id}-${Date.now()}.${fileExt}`
-          const newFilePath = `profile-pictures/${newFileName}`
-          
-          // Move the file to the correct path with user ID
-          const { error: moveError } = await supabase.storage
-            .from('user-files')
-            .move(uploadResult.filePath, newFilePath)
-          
-          if (!moveError) {
-            const { data } = supabase.storage
-              .from('user-files')
-              .getPublicUrl(newFilePath)
-            profilePictureUrl = data.publicUrl
-          }
+        const uploadedUrl = await uploadFile(formData.profilePicture, 'profile-pictures')
+        if (uploadedUrl) {
+          profilePictureUrl = uploadedUrl.publicUrl
+        } else {
+          setError('Failed to upload profile picture.')
+          setLoading(false)
+          return
         }
       }
 
@@ -239,27 +215,9 @@ export function JobSeekerProfileCompletion({ signupData, onProfileComplete }: Jo
       for (const file of files) {
         const uploadResult = await uploadFile(file, 'documents')
         if (uploadResult) {
-          // Update the file path to include the actual user ID
-          const fileExt = file.name.split('.').pop()
-          const newFileName = `${newUser.id}-${Date.now()}.${fileExt}`
-          const newFilePath = `documents/${newFileName}`
-          
-          // Move the file to the correct path with user ID
-          const { error: moveError } = await supabase.storage
-            .from('user-files')
-            .move(uploadResult.filePath, newFilePath)
-          
-          let finalUrl = uploadResult.publicUrl
-          if (!moveError) {
-            const { data } = supabase.storage
-              .from('user-files')
-              .getPublicUrl(newFilePath)
-            finalUrl = data.publicUrl
-          }
-          
           uploadedFiles.push({
             name: file.name,
-            url: finalUrl,
+            url: uploadResult.publicUrl,
             type: file.type
           })
         }
@@ -269,7 +227,7 @@ export function JobSeekerProfileCompletion({ signupData, onProfileComplete }: Jo
       const { error: profileError } = await supabase
         .from('profiles')
         .upsert({
-          id: newUser.id,
+          id: user.id,
           first_name: formData.firstName,
           last_name: formData.lastName,
           profile_picture: profilePictureUrl,
@@ -285,7 +243,7 @@ export function JobSeekerProfileCompletion({ signupData, onProfileComplete }: Jo
       // Insert job experiences into separate table
       if (jobExperiences.length > 0) {
         const experienceData = jobExperiences.map(job => ({
-          profile_id: newUser.id,
+          profile_id: user.id,
           company_name: job.company,
           company_website: job.website,
           position_name: job.position,
