@@ -542,10 +542,10 @@ export function JobSeekerProfileCompletion({ signupData, onProfileComplete }: Jo
           <div className="flex justify-center">
             <Button
               type="submit"
-              disabled={loading || !isVerified}
+              disabled={loading}
               className="bg-[#FFC107] hover:bg-[#FFB300] text-black px-8 py-4 rounded-lg font-semibold transition-all duration-200 hover:shadow-lg hover:shadow-[#FFC107]/25 text-lg"
             >
-              {loading ? 'Saving Profile...' : !isVerified ? 'Verify Account to Continue' : 'Complete Profile'}
+              {loading ? 'Saving Profile...' : 'Complete Profile'}
             </Button>
           </div>
         </form>
