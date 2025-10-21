@@ -6,25 +6,12 @@ export interface StripeProduct {
   mode: 'payment' | 'subscription'
   price: number // in cents
   currency: string
-  category: 'verification' | 'boost' | 'subscription' | 'job_posts' | 'enterprise' | 'outreach' | 'promotion'
+  category: 'boost' | 'subscription' | 'job_posts' | 'enterprise' | 'outreach' | 'promotion'
   popular?: boolean
   userType?: 'job_seeker' | 'employer' | 'both'
 }
 
 export const stripeProducts: StripeProduct[] = [
-  // Verification
-  {
-    id: 'prod_SxkyxEVxeDOsi4',
-    priceId: 'price_1S1pS7B0UOyKXg2VjEtaunLm',
-    name: 'Account Verification Fee',
-    description: 'Verify your account for enhanced credibility',
-    mode: 'payment',
-    price: 100, // €1.00
-    currency: 'eur',
-    category: 'verification',
-    userType: 'both'
-  },
-
   // Boost Features
   {
     id: 'prod_Sxkxm8chH8YAIF',

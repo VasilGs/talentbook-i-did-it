@@ -82,15 +82,29 @@ export function CompanyProfileView({ company, onUpdateSuccess, onSignOut }: Comp
 
   const fetchSubscriptionData = async () => {
     try {
-      const { data: subscription, error } = await supabase
-        .from('stripe_user_subscriptions')
-        .select('*')
-        .maybeSingle()
+      const { data: { user } } = await supabase.auth.getUser()
 
-      if (error) {
-        console.error('Error fetching subscription:', error)
-      } else {
-        setSubscriptionData(subscription)
+      if (user) {
+        const { data: customer } = await supabase
+          .from('stripe_customers')
+          .select('customer_id')
+          .eq('user_id', user.id)
+          .is('deleted_at', null)
+          .maybeSingle()
+
+        if (customer) {
+          const { data: subscription, error } = await supabase
+            .from('stripe_subscriptions')
+            .select('*')
+            .eq('customer_id', customer.customer_id)
+            .maybeSingle()
+
+          if (error) {
+            console.error('Error fetching subscription:', error)
+          } else {
+            setSubscriptionData(subscription)
+          }
+        }
       }
     } catch (error) {
       console.error('Error fetching subscription data:', error)

@@ -132,15 +132,30 @@ export function UserProfileView({ onSignOut }: UserProfileViewProps) {
       }
 
       // Fetch subscription data
-      const { data: subscription, error: subscriptionError } = await supabase
-        .from('stripe_user_subscriptions')
-        .select('*')
+      const { data: customer } = await supabase
+        .from('stripe_customers')
+        .select('customer_id')
+        .eq('user_id', user.id)
+        .is('deleted_at', null)
         .maybeSingle()
 
-      if (subscriptionError) {
-        console.error('Error fetching subscription:', subscriptionError)
-      } else {
-        setSubscriptionData(subscription)
+      if (customer) {
+        const { data: subscription, error: subscriptionError } = await supabase
+          .from('stripe_subscriptions')
+          .select('*')
+          .eq('customer_id', customer.customer_id)
+          .maybeSingle()
+
+        if (subscriptionError) {
+          console.error('Error fetching subscription:', subscriptionError)
+        } else {
+          setSubscriptionData(subscription ? {
+            subscription_status: subscription.status,
+            price_id: subscription.price_id,
+            current_period_end: subscription.current_period_end,
+            cancel_at_period_end: subscription.cancel_at_period_end
+          } : null)
+        }
       }
     } catch (err: any) {
       setError(err.message || 'Failed to load profile data')

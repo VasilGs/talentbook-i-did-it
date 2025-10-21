@@ -4,8 +4,6 @@ import { Button } from './ui/button'
 import { Label } from './ui/label'
 import { CountryCodeDropdown } from './ui/country-code-dropdown'
 import { supabase } from '../lib/supabase'
-import { StripeCheckout } from './StripeCheckout'
-import { stripeProducts } from '../stripe-config'
 
 interface SignupData {
   name: string
@@ -39,73 +37,6 @@ export function CompanyProfileCompletion({ signupData, onProfileComplete }: Comp
   const [countryCode, setCountryCode] = useState('+1')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [isVerified, setIsVerified] = useState(false)
-  const [checkingVerification, setCheckingVerification] = useState(true)
-  const [checkoutError, setCheckoutError] = useState<string | null>(null)
-
-  // Get verification product
-  const verificationProduct = stripeProducts.find(product => product.id === 'prod_SxkyxEVxeDOsi4')
-
-  // Check verification status and handle verification callback
-  useEffect(() => {
-    const checkVerificationStatus = async () => {
-      try {
-        // Check for verification callback
-        const urlParams = new URLSearchParams(window.location.search)
-        const isVerificationSuccess = urlParams.get('verified') === 'true'
-        
-        if (isVerificationSuccess) {
-          // User returned from successful Stripe payment
-          // Get current user and update verification status
-          const { data: { user }, error: userError } = await supabase.auth.getUser()
-          
-          if (user && !userError) {
-            const { error: updateError } = await supabase
-              .from('profiles')
-              .upsert({
-                id: user.id,
-                is_verified: true,
-                verified_at: new Date().toISOString()
-              })
-            
-            if (!updateError) {
-              setIsVerified(true)
-            }
-          }
-          
-          // Clean up URL
-          const newUrl = window.location.pathname
-          window.history.replaceState({}, '', newUrl)
-        } else {
-          // Check existing verification status
-          const { data: { user }, error: userError } = await supabase.auth.getUser()
-          
-          if (user && !userError) {
-            const { data: profile, error: profileError } = await supabase
-              .from('profiles')
-              .select('is_verified')
-              .eq('id', user.id)
-              .maybeSingle()
-            
-            if (profile && !profileError) {
-              setIsVerified(profile.is_verified || false)
-            }
-          }
-        }
-      } catch (error) {
-        console.error('Error checking verification status:', error)
-      } finally {
-        setCheckingVerification(false)
-      }
-    }
-
-    checkVerificationStatus()
-  }, [])
-
-  const handleCheckoutError = (error: string) => {
-    setCheckoutError(error)
-    setTimeout(() => setCheckoutError(null), 5000)
-  }
 
   const handleCompanyLogoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
@@ -480,70 +411,6 @@ export function CompanyProfileCompletion({ signupData, onProfileComplete }: Comp
             </div>
           </div>
 
-          {/* Account Verification */}
-          <div className="bg-white/5 backdrop-blur-sm rounded-2xl p-8 border border-white/10">
-            <h2 className="text-xl font-semibold text-white mb-6 font-poppins flex items-center">
-              <FileText className="w-5 h-5 mr-3 text-[#FFC107]" />
-              Account Verification
-            </h2>
-
-            <div className="space-y-6">
-              <div className="bg-[#FFC107]/10 border border-[#FFC107]/20 rounded-xl p-6">
-                <div className="flex items-start space-x-4">
-                  <div className="w-12 h-12 bg-gradient-to-br from-[#FFC107] to-[#FFB300] rounded-xl flex items-center justify-center flex-shrink-0">
-                    <FileText className="w-6 h-6 text-white" />
-                  </div>
-                  <div className="flex-1">
-                    <h3 className="text-lg font-semibold text-white mb-2">
-                      Verify Your Company Account
-                    </h3>
-                    <p className="text-gray-300 text-sm leading-relaxed mb-4">
-                      To ensure the quality and authenticity of our platform, we require a one-time verification fee of €1.00. 
-                      This helps us maintain a trusted community of professionals and reduces spam accounts.
-                    </p>
-                    
-                    {/* Checkout Error */}
-                    {checkoutError && (
-                      <div className="mb-4 bg-red-500/10 border border-red-500/20 rounded-lg p-3">
-                        <p className="text-red-400 text-sm">{checkoutError}</p>
-                      </div>
-                    )}
-
-                    {/* Loading State */}
-                    {checkingVerification ? (
-                      <div className="flex items-center space-x-3">
-                        <Loader2 className="w-5 h-5 text-[#FFC107] animate-spin" />
-                        <span className="text-gray-300">Checking verification status...</span>
-                      </div>
-                    ) : isVerified ? (
-                      /* Verified Badge */
-                      <div className="flex items-center space-x-3 bg-green-500/20 border border-green-500/40 rounded-lg p-4">
-                        <CheckCircle className="w-6 h-6 text-green-400" />
-                        <div>
-                          <p className="text-green-400 font-semibold">Account Verified!</p>
-                          <p className="text-green-300 text-sm">Your company account has been successfully verified.</p>
-                        </div>
-                      </div>
-                    ) : (
-                      /* Verification Button */
-                      verificationProduct && (
-                        <StripeCheckout
-                          product={verificationProduct}
-                          onError={handleCheckoutError}
-                          successUrl={`${window.location.origin}${window.location.pathname}?verified=true`}
-                          cancelUrl={`${window.location.origin}${window.location.pathname}`}
-                          className="bg-[#FFC107] hover:bg-[#FFB300] text-black px-6 py-3 rounded-lg font-semibold transition-all duration-200 hover:shadow-lg hover:shadow-[#FFC107]/25 flex items-center space-x-2"
-                        >
-                          <FileText className="w-5 h-5" />
-                          <span>Verify Account - €1.00</span>
-                        </StripeCheckout>
-                      )
-                    )}
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
 
           {/* Error Message */}
           {error && (

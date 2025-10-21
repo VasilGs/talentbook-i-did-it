@@ -28,7 +28,7 @@ export function CheckoutSuccess() {
     try {
       // Try to fetch order details from our database
       const { data: orders, error: ordersError } = await supabase
-        .from('stripe_user_orders')
+        .from('stripe_orders')
         .select('*')
         .eq('checkout_session_id', sessionId)
         .maybeSingle()
@@ -38,13 +38,30 @@ export function CheckoutSuccess() {
       }
 
       // Also check for subscription updates
-      const { data: subscription, error: subError } = await supabase
-        .from('stripe_user_subscriptions')
-        .select('*')
-        .maybeSingle()
+      const { data: { user } } = await supabase.auth.getUser()
 
-      if (subError) {
-        console.error('Error fetching subscription:', subError)
+      let subscription = null
+      if (user) {
+        const { data: customer } = await supabase
+          .from('stripe_customers')
+          .select('customer_id')
+          .eq('user_id', user.id)
+          .is('deleted_at', null)
+          .maybeSingle()
+
+        if (customer) {
+          const { data: sub, error: subError } = await supabase
+            .from('stripe_subscriptions')
+            .select('*')
+            .eq('customer_id', customer.customer_id)
+            .maybeSingle()
+
+          if (subError) {
+            console.error('Error fetching subscription:', subError)
+          } else {
+            subscription = sub
+          }
+        }
       }
 
       setOrderDetails({
@@ -136,14 +153,14 @@ export function CheckoutSuccess() {
         )}
 
         {/* Subscription Details */}
-        {orderDetails?.subscription && orderDetails.subscription.subscription_status === 'active' && (
+        {orderDetails?.subscription && orderDetails.subscription.status === 'active' && (
           <div className="bg-[#FFC107]/10 backdrop-blur-sm rounded-xl p-6 border border-[#FFC107]/20 mb-8 text-left">
             <h3 className="text-lg font-semibold text-white mb-4">Subscription Active</h3>
             <div className="space-y-2 text-sm">
               <div className="flex justify-between">
                 <span className="text-gray-400">Status:</span>
                 <span className="text-[#FFC107] font-medium capitalize">
-                  {orderDetails.subscription.subscription_status}
+                  {orderDetails.subscription.status}
                 </span>
               </div>
               {orderDetails.subscription.current_period_end && (
