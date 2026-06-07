@@ -42,32 +42,11 @@ export function SignupModal({ isOpen, onClose, onSwitchToLogin, onContinueSignup
       return
     }
 
-    // Check if user already exists by attempting to sign in first
     setLoading(true)
-    
+
     try {
-      // First, try to sign in to check if account exists
-      const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
-        email: formData.email,
-        password: formData.password,
-      })
-
-      if (signInData.user && !signInError) {
-        // User exists and credentials are correct
-        setError('An account with this email already exists. Please log in instead.')
-        setLoading(false)
-        return
-      }
-
-      // If sign in failed, proceed with signup
-      if (signInError && signInError.message !== 'Invalid login credentials') {
-        // Handle other sign-in errors
-        setError(signInError.message)
-        setLoading(false)
-        return
-      }
-
-      // Proceed with signup since user doesn't exist or credentials don't match
+      // Create the account. Signing up is always free — there is no
+      // verification/payment step required to register.
       const { data, error: signUpError } = await supabase.auth.signUp({
         email: formData.email,
         password: formData.password,
@@ -80,9 +59,9 @@ export function SignupModal({ isOpen, onClose, onSwitchToLogin, onContinueSignup
       })
 
       if (signUpError) {
-        if (signUpError.message.includes('User already registered')) {
+        if (signUpError.message.toLowerCase().includes('already registered')) {
           setError('An account with this email already exists. Please log in instead.')
-        } else if (signUpError.message.includes('password')) {
+        } else if (signUpError.message.toLowerCase().includes('password')) {
           setPasswordError('Password must be at least 6 characters long and contain a mix of characters')
         } else {
           setError(signUpError.message)
@@ -91,14 +70,30 @@ export function SignupModal({ isOpen, onClose, onSwitchToLogin, onContinueSignup
         return
       }
 
-      // Success - pass data to parent
+      // Supabase returns a user with an empty identities array when the email
+      // is already registered (it avoids leaking account existence).
+      if (data.user && Array.isArray(data.user.identities) && data.user.identities.length === 0) {
+        setError('An account with this email already exists. Please log in instead.')
+        setLoading(false)
+        return
+      }
+
+      // If the project requires email confirmation, no session is returned.
+      // The user must confirm before they can sign in and complete a profile.
+      if (!data.session) {
+        setError('Account created! Please check your email to confirm your address, then log in.')
+        setLoading(false)
+        return
+      }
+
+      // Signed in immediately — continue to profile completion.
       onContinueSignup({
         name: formData.name,
         email: formData.email,
         password: formData.password,
         userType: formData.userType
       })
-      
+
       // Reset form and close modal
       setFormData({ name: '', email: '', password: '', userType: 'job_seeker' })
       onClose()

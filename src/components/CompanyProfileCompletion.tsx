@@ -104,23 +104,40 @@ export function CompanyProfileCompletion({ signupData, onProfileComplete }: Comp
         }
       }
 
-      // Insert company profile
-      const { error: companyError } = await supabase
+      // The signup trigger already created a placeholder company row for this
+      // user. Update that row instead of inserting a duplicate.
+      const companyPayload = {
+        user_id: user.id,
+        company_name: formData.companyName,
+        company_logo: companyLogoUrl,
+        industry: formData.industry,
+        website_link: formData.websiteLink,
+        mol_name: formData.managerName,
+        uic_company_id: formData.companyId,
+        address: formData.companyAddress,
+        phone_number: formData.phoneNumber,
+        contact_email: formData.email,
+        responsible_person_name: formData.responsiblePerson,
+        short_introduction: formData.shortIntroduction,
+        profile_completed: true
+      }
+
+      const { data: existingRows, error: lookupError } = await supabase
         .from('companies')
-        .insert({
-          user_id: user.id,
-          company_name: formData.companyName,
-          company_logo: companyLogoUrl,
-          industry: formData.industry,
-          website_link: formData.websiteLink,
-          mol_name: formData.managerName,
-          uic_company_id: formData.companyId,
-          address: formData.companyAddress,
-          phone_number: formData.phoneNumber,
-          contact_email: formData.email,
-          responsible_person_name: formData.responsiblePerson,
-          short_introduction: formData.shortIntroduction
-        })
+        .select('id')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false })
+        .limit(1)
+
+      if (lookupError) {
+        throw lookupError
+      }
+
+      const existingCompany = existingRows?.[0]
+
+      const { error: companyError } = existingCompany
+        ? await supabase.from('companies').update(companyPayload).eq('id', existingCompany.id)
+        : await supabase.from('companies').insert(companyPayload)
 
       if (companyError) {
         throw companyError

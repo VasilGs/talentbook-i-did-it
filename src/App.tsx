@@ -888,6 +888,8 @@ const checkUserProfileCompletion = async (user: User) => {
   <Pricing
     title="Choose Your Plan"
     description="Find the perfect plan for your needs. Whether you're a job seeker or employer, we have options that scale with you."
+    user={user}
+    openSignup={() => setIsSignupModalOpen(true)}
     plans={[
       {
         name: "JOB SEEKER FREE",
