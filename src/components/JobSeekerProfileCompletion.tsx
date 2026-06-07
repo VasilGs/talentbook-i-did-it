@@ -164,6 +164,7 @@ export function JobSeekerProfileCompletion({ signupData, onProfileComplete }: Jo
           profile_picture: profilePictureUrl,
           description: formData.description,
           files: uploadedFiles,
+          profile_completed: true,
           updated_at: new Date().toISOString()
         })
 
